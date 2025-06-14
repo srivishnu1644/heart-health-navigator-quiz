@@ -4,6 +4,7 @@ import CardioQuestion, { CardioQuizAnswer } from "@/components/CardioQuestion";
 import CardioProgressBar from "@/components/CardioProgressBar";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
+import CardioQuizResultChart from "@/components/CardioQuizResultChart";
 
 // Cardio questions only (digestion/metabolism removed)
 const CARDIO_QUESTIONS = [
@@ -206,12 +207,20 @@ export default function CardioQuiz() {
             <CheckCircle2 className="w-14 h-14 text-green-600 mb-3" />
             <h2 className="text-2xl font-bold mb-2">Quiz Complete!</h2>
             <p className="mb-4 text-muted-foreground">Here’s a summary of your responses:</p>
-            <div className="w-full text-left mb-6">
+            {/* Chart summary here */}
+            <CardioQuizResultChart total={TOTAL_QUESTIONS} riskCount={cardioRiskScore} />
+            <div className="w-full text-left mb-6 mt-6">
               <ol className="space-y-2">
                 {CARDIO_QUESTIONS.map((q, idx) => (
                   <li key={idx}>
-                    <strong>{q}</strong><br />
-                    <span className="inline-block font-mono text-primary">{answers[idx] ? answers[idx]?.toString().charAt(0).toUpperCase() + answers[idx]?.toString().slice(1) : "No answer"}</span>
+                    <strong>{q}</strong>
+                    <br />
+                    <span className="inline-block font-mono text-primary">
+                      {answers[idx]
+                        ? answers[idx]?.toString().charAt(0).toUpperCase() +
+                          answers[idx]?.toString().slice(1)
+                        : "No answer"}
+                    </span>
                   </li>
                 ))}
               </ol>
@@ -220,6 +229,7 @@ export default function CardioQuiz() {
               Cardiovascular: {getCardioRecommendations(cardioRiskScore).level}
             </div>
             <div className="pt-2 w-full text-base text-left mb-5">
+              {/* Health tips summary */}
               {getCardioRecommendations(cardioRiskScore).advice}
               <div className="mt-2">
                 <h4 className="font-semibold">Recommended Workouts:</h4>
