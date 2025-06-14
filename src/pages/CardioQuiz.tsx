@@ -5,6 +5,7 @@ import CardioProgressBar from "@/components/CardioProgressBar";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 import CardioQuizResultChart from "@/components/CardioQuizResultChart";
+import MealPlanCard from "@/components/MealPlanCard";
 
 // Cardio questions only (digestion/metabolism removed)
 const CARDIO_QUESTIONS = [
@@ -112,6 +113,12 @@ export default function CardioQuiz() {
             </div>
           </>
         ),
+        mealPlan: {
+          breakfast: "Oatmeal with berries & nuts",
+          lunch: "Grilled chicken salad with olive oil vinaigrette",
+          snack: "Greek yogurt & sliced fruit",
+          dinner: "Baked salmon, quinoa, & steamed broccoli",
+        },
         workouts: [
           "Brisk walking, jogging, swimming, or cycling (moderate cardio)",
           "Yoga or pilates for flexibility and core strength",
@@ -146,6 +153,12 @@ export default function CardioQuiz() {
             </div>
           </>
         ),
+        mealPlan: {
+          breakfast: "Whole-grain toast, avocado, and boiled egg",
+          lunch: "Lentil & vegetable soup, side salad",
+          snack: "Raw veggie sticks with hummus",
+          dinner: "Grilled fish, roasted sweet potato, & steamed greens",
+        },
         workouts: [
           "Walking, cycling, water aerobics (moderate intensity, avoid high impact if unsure)",
           "Beginner strength or resistance bands (2x/week)",
@@ -186,6 +199,12 @@ export default function CardioQuiz() {
             </div>
           </>
         ),
+        mealPlan: {
+          breakfast: "Unsweetened oatmeal, sliced banana, walnuts",
+          lunch: "Quinoa bowl with mixed greens, chickpeas, roasted veggies",
+          snack: "Apple slices & a handful of almonds",
+          dinner: "Baked chicken or tofu, brown rice, steamed spinach",
+        },
         workouts: [
           "Start with short, gentle walks or seated exercises",
           "Avoid vigorous activity until cleared by a doctor",
@@ -228,6 +247,8 @@ export default function CardioQuiz() {
             <div className={`mb-2 font-semibold ${getCardioRecommendations(cardioRiskScore).color}`}>
               Cardiovascular: {getCardioRecommendations(cardioRiskScore).level}
             </div>
+            {/* Highlighted meal plan card */}
+            <MealPlanCard mealPlan={getCardioRecommendations(cardioRiskScore).mealPlan} />
             <div className="pt-2 w-full text-base text-left mb-5">
               {/* Health tips summary */}
               {getCardioRecommendations(cardioRiskScore).advice}
