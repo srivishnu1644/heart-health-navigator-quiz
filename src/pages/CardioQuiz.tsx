@@ -5,7 +5,8 @@ import CardioProgressBar from "@/components/CardioProgressBar";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 
-const QUESTIONS = [
+// Cardio questions (existing)
+const CARDIO_QUESTIONS = [
   // SYMPTOM-BASED
   "Do you experience chest pain or discomfort? (Especially during physical activity or emotional stress)",
   "Do you feel shortness of breath during exercise or while lying down?",
@@ -32,11 +33,57 @@ const QUESTIONS = [
   "Do you experience a lot of stress, anxiety, or sleep disturbances?"
 ];
 
+// Digestion & Metabolism questions (new!)
+const DIGESTION_METAB_QUESTIONS = [
+  "Do you experience frequent heartburn or acid reflux?",
+  "Do you have bloating, gas, or discomfort after eating?",
+  "Do you have difficulty digesting certain foods (e.g. dairy, gluten)?",
+  "Have you noticed unexplained weight loss or gain lately?",
+  "Do you have frequent constipation or diarrhea?",
+  "Do you feel tired or sluggish after meals?",
+  "Do you often have cravings for sweets or carbohydrates?",
+  "Do you experience frequent nausea or indigestion?",
+  "Do you have a diagnosed metabolic condition (e.g. thyroid disorder, PCOS)?"
+];
+
+// Combine both into sections
+const SECTIONS = [
+  {
+    label: "Cardiovascular Health",
+    questions: CARDIO_QUESTIONS,
+    key: "cardio"
+  },
+  {
+    label: "Digestion & Metabolism",
+    questions: DIGESTION_METAB_QUESTIONS,
+    key: "digest"
+  }
+];
+
+// Helper for indices within all questions
+const TOTAL_QUESTIONS = SECTIONS.reduce((acc, sec) => acc + sec.questions.length, 0);
+
 export default function CardioQuiz() {
+  // Track flat step (which question out of all questions)
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<(CardioQuizAnswer | undefined)[]>(Array(QUESTIONS.length).fill(undefined));
+  // Store answers for all questions in all sections
+  const [answers, setAnswers] = useState<(CardioQuizAnswer | undefined)[]>(Array(TOTAL_QUESTIONS).fill(undefined));
   const [finished, setFinished] = useState(false);
   const navigate = useNavigate();
+
+  // Map flat step/index to section and question number in section
+  function getSectionInfo(idx: number) {
+    let running = 0;
+    for (let i = 0; i < SECTIONS.length; i++) {
+      const section = SECTIONS[i];
+      if (idx < running + section.questions.length) {
+        return { sectionIndex: i, questionIndex: idx - running, section };
+      }
+      running += section.questions.length;
+    }
+    // fallback to last
+    return { sectionIndex: SECTIONS.length - 1, questionIndex: SECTIONS[SECTIONS.length - 1].questions.length - 1, section: SECTIONS[SECTIONS.length - 1] };
+  }
 
   function handleAnswer(answer: CardioQuizAnswer) {
     const updated = [...answers];
@@ -45,7 +92,7 @@ export default function CardioQuiz() {
   }
 
   function handleNext() {
-    if (step < QUESTIONS.length - 1) {
+    if (step < TOTAL_QUESTIONS - 1) {
       setStep((s) => s + 1);
     } else {
       setFinished(true);
@@ -58,12 +105,12 @@ export default function CardioQuiz() {
 
   function resetQuiz() {
     setStep(0);
-    setAnswers(Array(QUESTIONS.length).fill(undefined));
+    setAnswers(Array(TOTAL_QUESTIONS).fill(undefined));
     setFinished(false);
   }
 
-  // Simple scoring ("yes"/"unsure" to risk factors, "no" to healthy habits)
-  const riskScore = QUESTIONS.reduce((acc, txt, idx) => {
+  // --- Cardio risk scoring, unchanged ---
+  const cardioRiskScore = CARDIO_QUESTIONS.reduce((acc, txt, idx) => {
     // positive = "yes/unsure" for symptoms/history; negative for good lifestyle habits
     if (
       idx < 16 // Q0-Q15: "yes/unsure" is a risk
@@ -85,8 +132,26 @@ export default function CardioQuiz() {
     return acc;
   }, 0);
 
-  // Recommendation content based on risk level
-  function getRecommendations(risk: number) {
+  // --- Digestion & Metabolism scoring and recommendations ---
+  const digestionStart = CARDIO_QUESTIONS.length;
+  const digestionEnd = digestionStart + DIGESTION_METAB_QUESTIONS.length;
+
+  const digestionRiskScore = DIGESTION_METAB_QUESTIONS.reduce((acc, txt, idx) => {
+    const answerIdx = idx + digestionStart;
+    // Most are symptom: "yes/unsure" = higher risk
+    if (
+      idx === 3 // Q3: unexplained weight change
+      || idx === 8 // Q8: diagnosed condition
+    ) {
+      if (answers[answerIdx] === "yes" || answers[answerIdx] === "unsure") return acc + 2; // Weight & diagnosis = higher weight
+    } else {
+      if (answers[answerIdx] === "yes" || answers[answerIdx] === "unsure") return acc + 1;
+    }
+    return acc;
+  }, 0);
+
+  // --- Cardio Recommendations: unchanged ---
+  function getCardioRecommendations(risk: number) {
     if (risk <= 3) {
       return {
         level: "Low number of risk factors.",
@@ -110,6 +175,15 @@ export default function CardioQuiz() {
             </div>
           </>
         ),
+        workouts: [
+          "Brisk walking, jogging, swimming, or cycling (moderate cardio)",
+          "Yoga or pilates for flexibility and core strength",
+          "Bodyweight strength training (2x/week)"
+        ],
+        diet: [
+          "Focus on vegetables, fruits, whole grains, lean protein, healthy fats",
+          "Avoid excess salt, sugar, processed and fried foods"
+        ]
       };
     } else if (risk <= 8) {
       return {
@@ -135,6 +209,15 @@ export default function CardioQuiz() {
             </div>
           </>
         ),
+        workouts: [
+          "Walking, cycling, water aerobics (moderate intensity, avoid high impact if unsure)",
+          "Beginner strength or resistance bands (2x/week)",
+          "Chair yoga or stretching"
+        ],
+        diet: [
+          "Gradually reduce salt, sugar, and saturated fats",
+          "Choose whole grains, legumes, lean proteins"
+        ]
       };
     } else {
       return {
@@ -166,10 +249,120 @@ export default function CardioQuiz() {
             </div>
           </>
         ),
+        workouts: [
+          "Start with short, gentle walks or seated exercises",
+          "Avoid vigorous activity until cleared by a doctor",
+          "Gentle stretching, deep breathing, relaxation"
+        ],
+        diet: [
+          "Plant-based diet: veggies, fruits, legumes, nuts, seeds",
+          "Avoid added sugars, fried foods, limit sodium"
+        ]
       };
     }
   }
 
+  // Digestion/Metabolism personalized recommendations by risk score
+  function getDigestionRecommendations(risk: number) {
+    if (risk <= 2) {
+      return {
+        level: "No significant digestive/metabolic concerns.",
+        color: "text-green-700",
+        advice: (
+          <>
+            <h3 className="font-semibold text-lg mt-4 mb-2">Keep Up the Good Work</h3>
+            <ul className="list-disc list-inside space-y-1 text-left mb-3">
+              <li>Continue eating a balanced diet high in fiber (fruits, vegetables, whole grains).</li>
+              <li>Stay hydrated. Limit processed foods and added sugars.</li>
+              <li>Regular meals help maintain energy and promote a healthy metabolism.</li>
+              <li>Exercise: moderate cardio (brisk walking, cycling), plus some strength training.</li>
+            </ul>
+            <h4 className="font-semibold mb-1">Sample Day Meal Plan</h4>
+            <div className="text-sm leading-relaxed">
+              <b>Breakfast:</b> Whole grain cereal with oat milk and berries<br/>
+              <b>Lunch:</b> Quinoa salad with chickpeas and mixed veggies<br/>
+              <b>Snack:</b> Sliced bell pepper & hummus<br/>
+              <b>Dinner:</b> Stir-fried tofu with brown rice & broccoli<br/>
+            </div>
+          </>
+        ),
+        workouts: [
+          "Brisk walking, cycling, or swimming (3–5x/week)",
+          "Strength training (2x/week)",
+        ],
+        diet: [
+          "Continue eating a variety of plant-based, high-fiber foods",
+          "Stay hydrated; eat regularly"
+        ]
+      };
+    } else if (risk <= 5) {
+      return {
+        level: "Some potential digestive/metabolic issues detected.",
+        color: "text-yellow-600",
+        advice: (
+          <>
+            <h3 className="font-semibold text-lg mt-4 mb-2">Digestive & Metabolic Support</h3>
+            <ul className="list-disc list-inside space-y-1 text-left mb-3">
+              <li>Focus on regular meals, avoid skipping meals to prevent sluggishness.</li>
+              <li>Increase dietary fiber: whole grains, fruits, vegetables, legumes. Try a non-dairy probiotic yogurt if sensitive to lactose.</li>
+              <li>For bloating/reflux, avoid fried/spicy foods and limit portion sizes.</li>
+              <li>Support metabolism by being physically active most days: brisk walk, cycling, yoga, and strength training as tolerated.</li>
+              <li>Monitor weight trends and consult a physician about unexplained changes or persistent symptoms.</li>
+            </ul>
+            <h4 className="font-semibold mb-1">Sample Day Meal Plan</h4>
+            <div className="text-sm leading-relaxed">
+              <b>Breakfast:</b> Oatmeal with chia seeds & apple<br/>
+              <b>Lunch:</b> Chicken or lentil soup with leafy greens<br/>
+              <b>Snack:</b> Banana & a handful of nuts<br/>
+              <b>Dinner:</b> Baked fish or beans, sweet potato, sautéed spinach<br/>
+            </div>
+          </>
+        ),
+        workouts: [
+          "Walking, gentle cycling, low-impact aerobic classes",
+          "Yoga or stretching daily",
+        ],
+        diet: [
+          "Focus on fiber, moderate protein, easily-digested foods",
+          "Limit fried/greasy foods, spices if symptomatic"
+        ]
+      };
+    } else {
+      return {
+        level: "Significant digestive/metabolic issues detected—consider medical evaluation.",
+        color: "text-red-700",
+        advice: (
+          <>
+            <h3 className="font-semibold text-lg mt-4 mb-2">Important Steps</h3>
+            <ul className="list-disc list-inside space-y-1 text-left mb-3">
+              <li>Consult your healthcare provider for investigation of symptoms and a personalized plan.</li>
+              <li>Try a simple, easily-digested diet: bland foods, clear fluids, and avoid anything that triggers symptoms.</li>
+              <li>Eat small meals more frequently if regular meals worsen symptoms.</li>
+              <li>Physical activity: start with gentle movement (short walks, chair exercises); avoid strenuous activity until cleared.</li>
+              <li>Keep a symptom and food diary to help identify triggers.</li>
+            </ul>
+            <h4 className="font-semibold mb-1">Sample Day Meal Plan</h4>
+            <div className="text-sm leading-relaxed">
+              <b>Breakfast:</b> Plain toast with banana<br/>
+              <b>Lunch:</b> Rice porridge or chicken broth with soft veggies<br/>
+              <b>Snack:</b> Applesauce or plain crackers<br/>
+              <b>Dinner:</b> Steamed fish or lentils with peeled zucchini<br/>
+            </div>
+          </>
+        ),
+        workouts: [
+          "Short walks, chair-based activities",
+          "Gentle stretching or deep breathing",
+        ],
+        diet: [
+          "Bland, easily-digested foods",
+          "Keep hydration up, avoid trigger foods"
+        ]
+      };
+    }
+  }
+
+  // --------- UI ---------
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="bg-card shadow-2xl border border-border rounded-2xl p-8 max-w-xl w-full flex flex-col">
@@ -178,22 +371,66 @@ export default function CardioQuiz() {
             <CheckCircle2 className="w-14 h-14 text-green-600 mb-3" />
             <h2 className="text-2xl font-bold mb-2">Quiz Complete!</h2>
             <p className="mb-4 text-muted-foreground">Here’s a summary of your responses:</p>
+            {/* Summary for both sections */}
             <div className="w-full text-left mb-6">
-              <ol className="space-y-2">
-                {QUESTIONS.map((q, i) => (
-                  <li key={i}>
-                    <strong>{q}</strong>
-                    <br />
-                    <span className="inline-block font-mono text-primary">{answers[i] ? answers[i][0].toUpperCase() + answers[i]?.slice(1) : "No answer"}</span>
-                  </li>
-                ))}
-              </ol>
+              {SECTIONS.map((section, sIdx) => (
+                <div className="mb-4" key={section.key}>
+                  <h3 className="font-semibold text-lg mb-2">{section.label}</h3>
+                  <ol className="space-y-2">
+                    {section.questions.map((q, qIdx) => {
+                      const globalIdx = SECTIONS.slice(0, sIdx).reduce((acc, sec) => acc + sec.questions.length, 0) + qIdx;
+                      return (
+                        <li key={qIdx}>
+                          <strong>{q}</strong><br />
+                          <span className="inline-block font-mono text-primary">{answers[globalIdx] ? answers[globalIdx]?.toString().charAt(0).toUpperCase() + answers[globalIdx]?.toString().slice(1) : "No answer"}</span>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              ))}
             </div>
-            <div className={`mb-2 font-semibold ${getRecommendations(riskScore).color}`}>
-              {getRecommendations(riskScore).level}
+            {/* Cardio recommendations */}
+            <div className={`mb-2 font-semibold ${getCardioRecommendations(cardioRiskScore).color}`}>
+              Cardiovascular: {getCardioRecommendations(cardioRiskScore).level}
+            </div>
+            <div className="pt-2 w-full text-base text-left mb-5">
+              {getCardioRecommendations(cardioRiskScore).advice}
+              <div className="mt-2">
+                <h4 className="font-semibold">Recommended Workouts:</h4>
+                <ul className="list-disc list-inside text-sm">
+                  {getCardioRecommendations(cardioRiskScore).workouts.map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                </ul>
+                <h4 className="font-semibold mt-2">Diet Focus:</h4>
+                <ul className="list-disc list-inside text-sm">
+                  {getCardioRecommendations(cardioRiskScore).diet.map((d, i) => (
+                    <li key={i}>{d}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            {/* Digestion/Metabolism recommendations */}
+            <div className={`mb-2 font-semibold ${getDigestionRecommendations(digestionRiskScore).color}`}>
+              Digestion &amp; Metabolism: {getDigestionRecommendations(digestionRiskScore).level}
             </div>
             <div className="pt-2 w-full text-base text-left">
-              {getRecommendations(riskScore).advice}
+              {getDigestionRecommendations(digestionRiskScore).advice}
+              <div className="mt-2">
+                <h4 className="font-semibold">Recommended Workouts:</h4>
+                <ul className="list-disc list-inside text-sm">
+                  {getDigestionRecommendations(digestionRiskScore).workouts.map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                </ul>
+                <h4 className="font-semibold mt-2">Diet Focus:</h4>
+                <ul className="list-disc list-inside text-sm">
+                  {getDigestionRecommendations(digestionRiskScore).diet.map((d, i) => (
+                    <li key={i}>{d}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
             <p className="text-xs text-muted-foreground mb-8 mt-4">
               This quiz is for educational purposes only and does not provide medical advice, diagnosis, or treatment.
@@ -209,9 +446,12 @@ export default function CardioQuiz() {
           </div>
         ) : (
           <>
-            <CardioProgressBar current={step} total={QUESTIONS.length} />
+            <CardioProgressBar current={step} total={TOTAL_QUESTIONS} />
+            <div className="text-muted-foreground text-sm mb-2 text-center">
+              {getSectionInfo(step).section.label}
+            </div>
             <CardioQuestion
-              question={QUESTIONS[step]}
+              question={getSectionInfo(step).section.questions[getSectionInfo(step).questionIndex]}
               answer={answers[step]}
               onAnswer={handleAnswer}
             />
@@ -227,7 +467,7 @@ export default function CardioQuiz() {
                 onClick={handleNext}
                 disabled={!answers[step]}
               >
-                {step === QUESTIONS.length - 1 ? "Finish" : "Next"}
+                {step === TOTAL_QUESTIONS - 1 ? "Finish" : "Next"}
               </Button>
             </div>
           </>
